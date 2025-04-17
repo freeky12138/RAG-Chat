@@ -15,7 +15,10 @@
     "@langchain/community": "^0.3.40",
     "@langchain/core": "^0.3.44",
     "@langchain/openai": "^0.5.5",
+    "curl": "^0.1.4",
     "dotenv": "^16.4.7",
-    "faiss-node": "^0.5.1"
+    "faiss-node": "^0.5.1",
+    "https-proxy-agent": "^7.0.6",
+    "node-fetch": "^3.3.2"
   }
 }

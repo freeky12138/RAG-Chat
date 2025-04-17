@@ -1,94 +1,149 @@
-/** 私域数据库来构建 rag chatbot */ 
+/** 私域数据库来构建 rag chatbot */
 /** Time： 2025/4/13 */
 
-import { TextLoader } from "langchain/document_loaders/fs/text";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { OpenAIEmbeddings, ChatOpenAI } from "@langchain/openai";
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import * as dotenv from "dotenv";
-import { RunnableSequence } from "@langchain/core/runnables";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
+import {ChatOpenAI, OpenAIEmbeddings} from "@langchain/openai";
+import {RunnablePassthrough, RunnableSequence, RunnableWithMessageHistory} from "@langchain/core/runnables";
+import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import { FaissStore } from "@langchain/community/vectorstores/faiss";
+import { JSONChatHistory } from "../../JSONChatHistory/index";
+import fetch from "node-fetch";
+import * as dotenv from "dotenv";
+import * as path from "node:path";
 dotenv.config();
 
-// 加载文档
-const loader = new TextLoader("./data/qiu.txt");
-const docs = await loader.load();
+// 创建代理Agent（根据你的Clash端口配置）
+const proxy = process.env.PROXY_URL;  // Clash默认HTTP代理端口
+const agent = new HttpsProxyAgent(proxy);
 
-// 分割文档
-const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 500,
-    chunkOverlap: 100,
-});
-const splitDocs = await splitter.splitDocuments(docs);
+async function loadVectorStore() {
+    const directory = "./db/qiu"
+    const embeddings = new OpenAIEmbeddings({
+        openAIApiKey: process.env.OPENAI_API_KEY,
+        configuration: {
+            baseURL: "https://api.chatanywhere.tech/v1",
+            httpAgent: agent,
+            httpsAgent: agent
+        }
+    });
+    let vectorStore;
+    vectorStore = await FaissStore.load(directory, embeddings);
 
-// 创建embedding模型
-const embeddings = new OpenAIEmbeddings({
-    openAIApiKey: process.env.OPENAI_API_KEY,
-    configuration: {
-        baseURL: "https://api.chatanywhere.tech/v1"
-    }
-});
-
-// 创建LLM模型
-const model = new ChatOpenAI({
-    openAIApiKey: process.env.OPENAI_API_KEY,
-    configuration: {
-        baseURL: "https://api.chatanywhere.tech/v1"
-    }
-});
-
-// 对数据块中每一个数据调用embedding模型并存储在内存的store中
-const vectorStore = new MemoryVectorStore(embeddings)
-await vectorStore.addDocuments(splitDocs)
-
-// 从 vectorstore 获取到一个 retriever 实例 (2指的是最相关的两条数据)
-const retriever = vectorStore.asRetriever(2)
-
-// 将结果处理成普通文本
-const convertDocsToString = (documents) => {
-    return documents.map(doc => doc.pageContent).join('\n')
+    return vectorStore;
 }
 
-// 构建获取数据库中上下文的chain
-// contextRetriverChain 接收一个 input 对象作为输入，
-// 然后从中获得 question 属性，
-// 然后传递给 retriever，
-// 返回的 Document 对象输入作为参数传递给 convertDocsToString 然后被转换成纯文本。
-const contextRetriverChain = RunnableSequence.from([
-    (input) => input.question,
-    retriever,
-    convertDocsToString
-])
+async function getRephraseChain() {
+    const rephraseChainPrompt = ChatPromptTemplate.fromMessages([
+        [
+            "system",
+            "给定以下对话和一个后续问题，请将后续问题重述为一个独立的问题。请注意，重述的问题应该包含足够的信息，使得没有看过对话历史的人也能理解。",
+        ],
+        new MessagesPlaceholder("history"),
+        ["human", "将以下问题重述为一个独立的问题：\n{question}"],
+    ]);
+    let rephraseChain;
+    rephraseChain = RunnableSequence.from([
+        rephraseChainPrompt,
+        new ChatOpenAI({
+            temperature: 0.2,
+        }),
+        new StringOutputParser(),
+    ]);
 
-// 构建用户提问的template
-const TEMPLATE = `
-你是一个熟读刘慈欣的《球状闪电》的终极原著党，精通根据作品原文详细解释和回答问题，你在回答时会引用作品原文并且回答时仅根据原文尽可能回答用户的问题，如果原文中没有相关内容，你可以回答“原文中没有相关内容”，
+    return rephraseChain;
+}
 
-以下是原文中跟用户回答相关的内容：
-{context}
+export async function getRagChain() {
+    const vectorStore = await loadVectorStore();
+    const rephraseChain = await getRephraseChain();
 
-现在，你需要基于原文，回答以下问题：
-{question}`;
+    // 从 vectorstore 获取到一个 retriever 实例 (2指的是最相关的两条数据)
+    const retriever = vectorStore.asRetriever(2)
 
-const prompt = ChatPromptTemplate.fromTemplate(TEMPLATE)
+    // 将结果处理成普通文本
+    const convertDocsToString = (documents) => {
+        return documents.map(doc => doc.pageContent).join('\n')
+    }
 
-// 组装成完整的Chain
-const ragChain = RunnableSequence.from([
-    {
-        context: contextRetriverChain,
-        question: (input) => input.question,
-    },
-    prompt,
-    model,
-    new StringOutputParser()
-])
+    // 构建获取数据库中上下文的chain
+    // contextRetriverChain 接收一个 input 对象作为输入，
+    // 然后从中获得 question 属性，
+    // 然后传递给 retriever，
+    // 返回的 Document 对象输入作为参数传递给 convertDocsToString 然后被转换成纯文本。
+    const contextRetriverChain = RunnableSequence.from([
+        (input) => input.question,
+        retriever,
+        convertDocsToString
+    ])
 
-try {
-    const res = await ragChain.invoke({
-        question:"原文中，谁提出了宏原子的假设？并详细介绍给我宏原子假设的理论"
-    })
+    // 构建用户提问的template
+    const TEMPLATE = `
+    你是一个熟读刘慈欣的《球状闪电》的终极原著党，精通根据作品原文详细解释和回答问题，你在回答时会引用作品原文并且回答时仅根据原文尽可能回答用户的问题，如果原文中没有相关内容，你可以回答“原文中没有相关内容”，
+    
+    以下是原文中跟用户回答相关的内容：
+    {context}`;
+
+    const prompt = ChatPromptTemplate.fromTemplate([
+        ["system", TEMPLATE],
+        new MessagesPlaceholder("history"),
+        ["human", "现在，你需要基于原文，回答以下问题：\n{question}"]
+    ])
+
+    // 创建LLM模型
+    const model = new ChatOpenAI({
+        openAIApiKey: process.env.OPENAI_API_KEY,
+        configuration: {
+            baseURL: "https://api.chatanywhere.tech/v1",
+            // 添加自定义fetch和代理设置
+            fetch: (url, init) => {
+                return fetch(url, {...init, agent});
+            }
+        }
+    });
+
+    // 组装成完整的Chain
+    const ragChain = RunnableSequence.from([
+        RunnablePassthrough.assign({
+            // 根据改写后的提问
+            standalone_question: rephraseChain,
+        }),
+        RunnablePassthrough.assign({
+            context: contextRetriverChain,
+        }),
+        prompt,
+        model,
+        new StringOutputParser()
+    ])
+
+    const chatHistoryDir = path.join(__dirname, "../../chat_data");
+
+    // 增加聊天记录功能
+    let ragChainWithHistory;
+    ragChainWithHistory = new RunnableWithMessageHistory({
+        runnable: ragChain,
+        getMessageHistory: (sessionId) => new JSONChatHistory({sessionId, dir: chatHistoryDir}),
+        historyMessagesKey: "history",
+        inputMessagesKey: "question",
+    });
+
+    return ragChainWithHistory
+}
+
+async function run() {
+    const ragChain = await getRagChain();
+
+    const res = await ragChain.invoke(
+        {
+              question: "什么是球状闪电？",
+            // question: "这个现象在文中有什么故事",
+        },
+        {
+            configurable: { sessionId: "test-history" },
+        }
+    );
+
     console.log(res);
-} catch (error) {
-    console.error("[ERROR] Full error details:", error);
 }
+
+run();
