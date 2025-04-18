@@ -1,0 +1,38 @@
+[
+  {
+    "type": "human",
+    "data": {
+      "content": "什么是球状闪电？",
+      "additional_kwargs": {},
+      "response_metadata": {}
+    }
+  },
+  {
+    "type": "ai",
+    "data": {
+      "content": "球状闪电至今还是一个科学之谜，但现在已经能在实验室中产生它（虽然平均七千次实验才能产生一个）。它不是科幻的事，也不是科幻能做到的，我们所能做到的，只是描述自己的想象，创造一个科幻形象。小说中描述的球状闪电是一个想象的造物：一个充盈着能量的弯曲的空间，一个似有似无的空泡，一个足球大小的电子。",
+      "tool_calls": [],
+      "invalid_tool_calls": [],
+      "additional_kwargs": {},
+      "response_metadata": {}
+    }
+  },
+  {
+    "type": "human",
+    "data": {
+      "content": "这个现象在文中有什么故事",
+      "additional_kwargs": {},
+      "response_metadata": {}
+    }
+  },
+  {
+    "type": "ai",
+    "data": {
+      "content": "在《球状闪电》这个小说中描述了球状闪电的出现。在小说中，主人公和他的家人遇到了一个球状闪电，它穿墙进入他们的家，飘浮在他们头顶上。这个球状闪电发着朦胧的红光，发出啸叫声，并且在飞动时留下一条发光的尾迹。最终，这个球状闪电停在主人公的爸爸头顶上，发出低沉的笑声，内部似乎有无限深邃的光雾，释放出大群的蓝色小星星。这个球状闪电的出现给主人公和他的家人带来恐惧和不确定感，也展示了它的神秘和超乎寻常的特性。",
+      "tool_calls": [],
+      "invalid_tool_calls": [],
+      "additional_kwargs": {},
+      "response_metadata": {}
+    }
+  }
+]

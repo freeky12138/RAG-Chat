@@ -7,8 +7,7 @@ import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { FaissStore } from "@langchain/community/vectorstores/faiss";
-import { JSONChatHistory } from "../../JSONChatHistory/index";
-import fetch from "node-fetch";
+import { JSONChatHistory } from "../JSONChatHistory/index.js";
 import * as dotenv from "dotenv";
 import * as path from "node:path";
 dotenv.config();
@@ -47,6 +46,12 @@ async function getRephraseChain() {
         rephraseChainPrompt,
         new ChatOpenAI({
             temperature: 0.2,
+            openAIApiKey: process.env.OPENAI_API_KEY,
+            configuration: {
+                baseURL: "https://api.chatanywhere.tech/v1",
+                httpAgent: agent,
+                httpsAgent: agent
+            }
         }),
         new StringOutputParser(),
     ]);
@@ -84,7 +89,7 @@ export async function getRagChain() {
     以下是原文中跟用户回答相关的内容：
     {context}`;
 
-    const prompt = ChatPromptTemplate.fromTemplate([
+    const prompt = ChatPromptTemplate.fromMessages([
         ["system", TEMPLATE],
         new MessagesPlaceholder("history"),
         ["human", "现在，你需要基于原文，回答以下问题：\n{question}"]
@@ -95,10 +100,8 @@ export async function getRagChain() {
         openAIApiKey: process.env.OPENAI_API_KEY,
         configuration: {
             baseURL: "https://api.chatanywhere.tech/v1",
-            // 添加自定义fetch和代理设置
-            fetch: (url, init) => {
-                return fetch(url, {...init, agent});
-            }
+            httpAgent: agent,
+            httpsAgent: agent
         }
     });
 
@@ -116,7 +119,7 @@ export async function getRagChain() {
         new StringOutputParser()
     ])
 
-    const chatHistoryDir = path.join(__dirname, "../../chat_data");
+    const chatHistoryDir = "./chat_data"
 
     // 增加聊天记录功能
     let ragChainWithHistory;
@@ -135,8 +138,8 @@ async function run() {
 
     const res = await ragChain.invoke(
         {
-              question: "什么是球状闪电？",
-            // question: "这个现象在文中有什么故事",
+            //   question: "什么是球状闪电？",
+            question: "这个现象在文中有什么故事",
         },
         {
             configurable: { sessionId: "test-history" },
