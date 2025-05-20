@@ -10,7 +10,7 @@ import { FaissStore } from "@langchain/community/vectorstores/faiss";
 import { JSONChatHistory } from "../JSONChatHistory/index.js";
 import * as dotenv from "dotenv";
 import * as path from "node:path";
-dotenv.config();
+dotenv.config();  
 
 // 创建代理Agent（根据你的Clash端口配置）
 const proxy = process.env.PROXY_URL;  // Clash默认HTTP代理端口
@@ -20,7 +20,7 @@ async function loadVectorStore() {
     const directory = "./db/qiu"
     const embeddings = new OpenAIEmbeddings({
         openAIApiKey: process.env.OPENAI_API_KEY,
-        configuration: {
+        configuration: { 
             baseURL: "https://api.chatanywhere.tech/v1",
             httpAgent: agent,
             httpsAgent: agent
@@ -32,6 +32,10 @@ async function loadVectorStore() {
     return vectorStore;
 }
 
+/**
+ * 创建一个重述问题的链
+ * @returns {Promise<RunnableSequence>} 返回一个重述问题的链
+ */
 async function getRephraseChain() {
     const rephraseChainPrompt = ChatPromptTemplate.fromMessages([
         [
@@ -59,6 +63,10 @@ async function getRephraseChain() {
     return rephraseChain;
 }
 
+/**
+ * 获取RAG链
+ * @returns {Promise<RunnableWithMessageHistory>} 返回一个带有消息历史记录的RAG链
+ */
 export async function getRagChain() {
     const vectorStore = await loadVectorStore();
     const rephraseChain = await getRephraseChain();

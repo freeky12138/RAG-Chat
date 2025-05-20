@@ -1,0 +1,20 @@
+[
+  {
+    "type": "human",
+    "data": {
+      "content": "什么是球状闪电",
+      "additional_kwargs": {},
+      "response_metadata": {}
+    }
+  },
+  {
+    "type": "ai",
+    "data": {
+      "content": "根据原文中的描述，球状闪电是一种极其罕见的现象，是一个充盈着能量的弯曲的空间，一个似有似无的空泡，一个足球大小的电子。它是一种宇宙中可能存在的与我们的现实完全不同的其他世界的暗示，是一种神秘而超现实的存在，不同于小说中所描述的浪漫想象。",
+      "tool_calls": [],
+      "invalid_tool_calls": [],
+      "additional_kwargs": {},
+      "response_metadata": {}
+    }
+  }
+]

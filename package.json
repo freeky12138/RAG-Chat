@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "client": "node src/client.js",
     "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,8 +16,11 @@
     "@langchain/community": "^0.3.40",
     "@langchain/core": "^0.3.44",
     "@langchain/openai": "^0.5.5",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
     "curl": "^0.1.4",
     "dotenv": "^16.4.7",
+    "express": "^5.1.0",
     "faiss-node": "^0.5.1",
     "https-proxy-agent": "^7.0.6",
     "node-fetch": "^3.3.2"
